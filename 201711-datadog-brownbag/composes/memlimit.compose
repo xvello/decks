@@ -1,0 +1,14 @@
+version: '2.2'
+
+services:
+  memleak-pid1:
+    image: alpine:3.6
+    command: "ash -c 'for i in `seq 1 10000000`; do true; done'"
+    mem_limit: 10000000
+    restart: on-failure
+  memleak-forked:
+    image: alpine:3.6
+    command: "ash -c \"ash -c 'for i in `seq 1 10000000`; do true; done' & sleep 20\""
+    cpus: 0.1
+    mem_limit: 10000000
+    restart: on-failure

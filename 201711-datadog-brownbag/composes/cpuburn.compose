@@ -1,0 +1,10 @@
+version: '2.2'
+
+services:
+  cpuburn-nolimit:
+    image: alpine:3.6
+    command: "dd if=/dev/zero of=/dev/null"
+  cpuburn-10percent:
+    image: alpine:3.6
+    command: "dd if=/dev/zero of=/dev/null"
+    cpus: 0.1
