@@ -23,7 +23,7 @@ $iframe-scale     : 1.5;
 // ---------------------------------------------------------------------------
 
 * { box-sizing: border-box; }
-body { font-family: $font; }
+body { font-family: $font; -webkit-print-color-adjust:exact; }
 h1, h2, h3, h4, h5, h6 {
   margin: 0 0 $margin 0;
   font-family: $font-title;
