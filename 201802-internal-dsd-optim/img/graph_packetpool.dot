@@ -1,0 +1,21 @@
+digraph G {
+    rankdir=TD;
+    fontname="sans-serif";
+    penwidth="0.1";
+    edge [comment="Wildcard edge", 
+          color="indigo", 
+          fontname="sans-serif", 
+          colorscheme="svg"];
+    node [fontname="serif", 
+          fillcolor="indigo", 
+          colorscheme="svg", 
+          color="white", 
+          fontcolor="white", 
+          style="filled"];
+    "n1" [label="PacketPool"];
+    "n2" [label="Listener.Listen()"];
+    "n3" [label="dogstatsd.handleMessages"];
+    "n1" -> "n2"  [label=" Get()"];
+    "n3" -> "n1"  [label="  Put()"];
+    "n2" -> "n3"  [label="    chan *listeners.PacketPool      "];
+}
