@@ -172,19 +172,6 @@ Several flags are useful:
 
 Alloc size influences the **frequency** of the GC runs, alloc count influences the **runtime** of the GC runs (more work to do). Both are to be looked at.
 
-### Mutex contentions
-
-```
-$go tool pprof  mutex
-Type: delay
-Entering interactive mode (type "help" for commands, "o" for options)
-(pprof) top
-Showing nodes accounting for 0, 0% of 0 total
-      flat  flat%   sum%        cum   cum%
-```
-
-Nothing to see here.
-
 ### [#928 [dsd] reduce heap allocations in listeners](https://github.com/DataDog/datadog-agent/pull/928)
 
 We used to allocate a 8kB buffer for every incoming UDP/UDS packet, then garbage-collect it when parsed. When receiving thousands of packets/sec that accounted to several MB/s of heap trash being generated.
