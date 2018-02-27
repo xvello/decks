@@ -66,9 +66,31 @@ Of course, [there's a Datadog integration for that](https://docs.datadoghq.com/i
 
 ### PProf and trace
 
+Allows in-place profiling of an application, either by:
+
+- [programatically profiling from inside your application](https://golang.org/pkg/runtime/pprof/#StartCPUProfile)
+- [exposing an http endpoint](https://golang.org/pkg/net/http/pprof/), and getting traces on a per-needed basis
+
+The second one is great for profiling on remote systems. You can then copy the file and analyse it locally. Current endpoints:
+
+- http://localhost:6060/debug/pprof/heap
+- http://localhost:6060/debug/pprof/profile
+- http://localhost:6060/debug/pprof/trace?seconds=5
+
+- http://localhost:6060/debug/pprof/block (requires `runtime.SetBlockProfileRate`)
+- http://localhost:6060/debug/pprof/mutex (requires `runtime.SetMutexProfileFraction`)
+
+`go tool` bundles a very powerful execution tracer, see [justforfunc #22: using the Go execution tracer](https://www.youtube.com/watch?v=ySy3sR1LFCQ)
 
 ### Benchmarks
 
+The go testing framework also supports benchmarking out of the box, to benchmark:
+
+- execution time
+- allocation number and size
+- exporting heap / cpu profiles for use with pprof
+
+See examples below
 
 ## Initial investigations (beta5 -> beta6)
 
@@ -189,7 +211,7 @@ I audited `parse.go` and confirmed we are not bleeding out any naked []byte that
 
 beta6 performance:
 
-- `memstats.GCCPUFraction ` : 1,37% 
+- `memstats.GCCPUFraction ` : 1,37%
 - [CPU profiling](pprofs/beta6/profile.svg): `runtime.gcDrain` down to 1.78% , `runtime.mallocgc` is still 8% -> need to keep working on allocations
 - [Alloc-space](pprofs/beta6/heap.svg): two main causes identified:
   - `dogstatsd.parseMetricMessage` / `bytes.Split`
@@ -197,7 +219,7 @@ beta6 performance:
 
 ### [#950 [agg] move contextKeys to 128bit Murmur3 hashes](https://github.com/DataDog/datadog-agent/pull/950)
 
-Tackling the `generateContextKey` memory allocations. It generates a string aggregation of metric name + tags + hostname, for example ``my.metric.name,bar,foo,metric-hostname``. It was called for every metric coming into the aggregator. 
+Tackling the `generateContextKey` memory allocations. It generates a string aggregation of metric name + tags + hostname, for example ``my.metric.name,bar,foo,metric-hostname``. It was called for every metric coming into the aggregator.
 
 #### [Benchmark current code](bench/contextkeys/current_test.go)
 
@@ -256,7 +278,7 @@ Great side-effect: we are **30% faster on context lookups** than before (see PR 
 
 ### [#951 [dsd] optimize parsing logic for performance](https://github.com/DataDog/datadog-agent/pull/951)
 
-I [continued profiling pkg/dogstatsd to reduce heap allocations and CPU usage](bench/parsing). Most of the work is removing bytes.Split occurrences that allocated useless `[][]bytes`, and directly tokenkize the input `[]byte`. The remaining allocations are individual `string` and `[]string` that can't be avoided by design.
+[I continued profiling pkg/dogstatsd to reduce heap allocations and CPU usage](bench/parsing). Most of the work is removing bytes.Split occurrences that allocated useless `[][]bytes`, and directly tokenkize the input `[]byte`. The remaining allocations are individual `string` and `[]string` that can't be avoided by design.
 
 ```
 $ go test -bench=. -benchmem ../../bench/parsing
@@ -274,20 +296,26 @@ BenchmarkParseTagsSplit2-4        	 319 ns/op	      80 B/op	       4 allocs/op
 
 ### [#952 [dsd] use a fixed number of parsing workers](https://github.com/DataDog/datadog-agent/pull/952)
 
-Change the dsd server logic from spawning a transient goroutine per packet to running a fixed number of workers that listen on the intake channel.
-
-For now, the number of worker is fixed at min(2, NumCPU-2), optimising for dsd-heavy scenario where you would want:
-
-    1 thread listening on UDP/UDS
-    1 thread for the aggregator
-    other CPUs parsing packets
-
-Motivation
-
-This reduces significantly the scheduler pressure on high-throughput scenarios. It should be revisited later to implement a better worker number strategy.
+Back to [CPU profiling](pprofs/beta6/profile.svg): `runtime.newstack` was more than 20% of the CPU time: that's the goroutine spawning cost. Move from 1 transient goroutine per packet to a channel consumed by workers.
 
 ### [#953 [tagger] add caching to entityTags to avoid joining arrays for every lookup](https://github.com/DataDog/datadog-agent/pull/953)
 
 Store the result of tag concatenation from several sources inside the entityTags object for reuse in the next lookup. Cache is invalidated in write, and re-computed on the following read.
 
 As we are storing []strings, memory cost is pretty small (references). cachedLow is a slice of cachedAll (which stores low card tags + high card tags).
+
+# Result
+
+beta7 performance:
+
+- `memstats.GCCPUFraction ` : 0,82%
+- [CPU profiling](pprofs/beta7/profile.svg)
+- [Alloc-space](pprofs/beta7/heap.svg)
+
+#### Max raw throughput
+![](img/rc1_bench_throughput.png)
+
+#### Packet drops: beta4 vs beta7 (no client-side buffering)
+![](img/packet_drops_beta4-beta7.png)
+
+
