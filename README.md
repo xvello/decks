@@ -1,5 +1,12 @@
 # Talk decks - Xavier Vello
 
+## 2018
+
+### DockerCon 2018: Automating Container Security Scanning
+
+
+[![pdf](https://github.com/xvello/decks/blob/master/201812-dockercon-container-scanning/thumb.png)](https://github.com/xvello/decks/raw/master/201812-dockercon-container-scanning/presentation.pdf)
+
 ## 2017
 
 ### Datadog brownbag: Golang performance optimization
